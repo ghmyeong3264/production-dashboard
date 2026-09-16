@@ -548,7 +548,7 @@ body.share-mode .share-view{display:block}
 
 
 
-/* V4.19 누적 조회 안정화 + V4.18 UI 보정 */
+/* V4.20 누적 상단요약 반영 + 누적 조회 안정화 */
 .share-phone{
   width:min(calc(100vw - 18px),1640px) !important;
 }
@@ -853,9 +853,9 @@ async function openShareView(){
           이전 일일실적은 대신 표시하지 않습니다.
         </div>`;
       }
-      if($('shareTotalSaving')) $('shareTotalSaving').textContent='데이터 없음';
-      if($('shareRate')) $('shareRate').textContent='-';
-      if($('shareRateDiff')) $('shareRateDiff').textContent='누적 스냅샷 확인 필요';
+      if($('shareSavingTotal')) $('shareSavingTotal').textContent='데이터 없음';
+      if($('shareSavingRate')) $('shareSavingRate').textContent='-';
+      if($('shareSavingDiff')) $('shareSavingDiff').textContent='누적 스냅샷 확인 필요';
     }
     return;
   }
@@ -953,18 +953,33 @@ async function renderCumulativeShare_(selectedDate){
   const ko=['일','월','화','수','목','금','토'][d.getDay()];
   const dateText=`${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 (${ko})`;
 
-  if($('shareDate')) $('shareDate').textContent=dateText;
-  if($('shareBasisDate')) $('shareBasisDate').textContent=dateText+' 기준';
-  if($('shareUpdateTime')) $('shareUpdateTime').textContent='업데이트 '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false});
-  if($('shareTotalSaving')) $('shareTotalSaving').textContent=fmt(Math.round(currentSaving))+'원';
+  // 공유화면 실제 DOM ID에 누적모드 값을 반영
+  if($('shareHeroDate')) $('shareHeroDate').textContent=dateText;
+  if($('shareSectionDate')) $('shareSectionDate').textContent=dateText+' 기준';
+  if($('shareHeroTime')) $('shareHeroTime').textContent='업데이트 '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false});
 
-  if($('shareRate')){
-    $('shareRate').textContent=(rate>0?'+':'')+rate.toFixed(1)+'%';
-    $('shareRate').className='share-rate-value '+(rate<0?'negative':(rate===0?'neutral':''));
+  if($('shareSavingTotal')){
+    $('shareSavingTotal').textContent=fmt(Math.round(currentSaving))+'원';
   }
-  if($('shareRateDiff')){
-    $('shareRateDiff').textContent='전일 대비 '+(diff>0?'+':'')+fmt(Math.round(diff))+'원';
-    $('shareRateDiff').className='share-rate-sub '+(diff<0?'negative':(diff===0?'neutral':''));
+
+  if($('shareSavingRate')){
+    if(data.previous.length){
+      $('shareSavingRate').textContent=(rate>0?'+':'')+rate.toFixed(1)+'%';
+      $('shareSavingRate').className='share-rate-value '+(rate<0?'negative':(rate===0?'neutral':''));
+    }else{
+      $('shareSavingRate').textContent='-';
+      $('shareSavingRate').className='share-rate-value neutral';
+    }
+  }
+
+  if($('shareSavingDiff')){
+    if(data.previous.length){
+      $('shareSavingDiff').textContent='전일 대비 '+(diff>0?'+':'')+fmt(Math.round(diff))+'원';
+      $('shareSavingDiff').className='share-rate-sub '+(diff<0?'negative':(diff===0?'neutral':''));
+    }else{
+      $('shareSavingDiff').textContent='전일 데이터 없음';
+      $('shareSavingDiff').className='share-rate-sub neutral';
+    }
   }
 
   const host=$('shareProcessRows');
