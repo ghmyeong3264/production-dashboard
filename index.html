@@ -546,6 +546,66 @@ body.share-mode .share-view{display:block}
   }
 }
 
+
+
+/* V4.19 누적 조회 안정화 + V4.18 UI 보정 */
+.share-phone{
+  width:min(calc(100vw - 18px),1640px) !important;
+}
+.share-process-rows{
+  gap:18px !important;
+  padding:0 18px 18px !important;
+}
+.share-process-row{
+  grid-template-columns:88px minmax(0,1fr) !important;
+  gap:12px !important;
+  padding:14px 12px !important;
+}
+.share-process-label{
+  min-height:160px !important;
+  border-radius:18px !important;
+  padding:10px 6px !important;
+}
+.share-process-label .icon{
+  font-size:24px !important;
+  margin-bottom:4px !important;
+}
+.share-process-label .name{
+  font-size:20px !important;
+  line-height:1.08 !important;
+}
+.share-team-grid{
+  grid-template-columns:repeat(3,minmax(220px,1fr)) !important;
+  gap:16px !important;
+}
+.share-mini-card{
+  padding:16px 14px !important;
+  border-radius:18px !important;
+}
+.share-mini-worker{
+  font-size:30px !important;
+}
+.share-metric-head{
+  font-size:14px !important;
+}
+.share-current-value{
+  font-size:31px !important;
+}
+.share-change{
+  font-size:18px !important;
+}
+.share-save-label{
+  font-size:13px !important;
+}
+.share-save-value{
+  font-size:24px !important;
+  letter-spacing:-0.9px !important;
+}
+@media (min-width:901px){
+  .share-process-row.pinch .share-team-grid{
+    grid-template-columns:minmax(260px,320px) 1fr 1fr !important;
+  }
+}
 @media print{
   @page{size:A4 landscape;margin:8mm}
   body{background:#fff}
@@ -782,12 +842,25 @@ async function openShareView(){
   document.body.classList.add('share-mode');
   window.scrollTo(0,0);
   const selectedDate=$('date')?.value || new Date().toISOString().slice(0,10);
+
   if(CUMULATIVE_MODE){
     const ok=await renderCumulativeShare_(selectedDate);
-    if(!ok) render();
-  }else{
-    render();
+    if(!ok){
+      const host=$('shareProcessRows');
+      if(host){
+        host.innerHTML=`<div style="grid-column:1/-1;background:#fff;border:2px solid #f1b6b6;border-radius:18px;padding:28px;text-align:center;font-weight:900;color:#b42318;font-size:20px">
+          ${selectedDate} 누적 스냅샷을 불러오지 못했습니다.<br>
+          이전 일일실적은 대신 표시하지 않습니다.
+        </div>`;
+      }
+      if($('shareTotalSaving')) $('shareTotalSaving').textContent='데이터 없음';
+      if($('shareRate')) $('shareRate').textContent='-';
+      if($('shareRateDiff')) $('shareRateDiff').textContent='누적 스냅샷 확인 필요';
+    }
+    return;
   }
+
+  render();
 }
 function closeShareView(){
   document.body.classList.remove('share-mode');
@@ -795,33 +868,43 @@ function closeShareView(){
 }
 
 async function fetchCumulativeSnapshots_(selectedDate){
-  const url=normUrl($('sbUrl').value);
-  const key=$('sbKey').value.trim();
-  if(!url || !key) return {current:[],previous:[]};
-  const headers={apikey:key,Accept:'application/json'};
-
-  const cur=await fetch(
-    url+'/rest/v1/production_cumulative_snapshots?select=*&work_date=eq.'+
-    encodeURIComponent(selectedDate)+'&order=equipment.asc,team.asc',
-    {headers}
-  );
-  if(!cur.ok) return {current:[],previous:[]};
-  const current=await cur.json();
-
-  const prv=await fetch(
-    url+'/rest/v1/production_cumulative_snapshots?select=*&work_date=lt.'+
-    encodeURIComponent(selectedDate)+'&order=work_date.desc&limit=50',
-    {headers}
-  );
-  let previous=[];
-  if(prv.ok){
-    const rows=await prv.json();
-    if(rows.length){
-      const d=rows[0].work_date;
-      previous=rows.filter(r=>r.work_date===d);
-    }
+  if(!sb){
+    const ok=await ensure();
+    if(!ok) return {current:[],previous:[],error:'Supabase 미연결'};
   }
-  return {current,previous};
+
+  const cur=await sb
+    .from('production_cumulative_snapshots')
+    .select('*')
+    .eq('work_date',selectedDate)
+    .order('equipment',{ascending:true})
+    .order('team',{ascending:true});
+
+  if(cur.error){
+    console.error('누적 스냅샷 현재일 조회 오류',cur.error);
+    return {current:[],previous:[],error:cur.error.message||String(cur.error)};
+  }
+
+  const prevDateRes=await sb
+    .from('production_cumulative_snapshots')
+    .select('work_date')
+    .lt('work_date',selectedDate)
+    .order('work_date',{ascending:false})
+    .limit(1);
+
+  let previous=[];
+  if(!prevDateRes.error && prevDateRes.data && prevDateRes.data.length){
+    const prevDate=prevDateRes.data[0].work_date;
+    const prv=await sb
+      .from('production_cumulative_snapshots')
+      .select('*')
+      .eq('work_date',prevDate)
+      .order('equipment',{ascending:true})
+      .order('team',{ascending:true});
+    if(!prv.error) previous=prv.data||[];
+  }
+
+  return {current:cur.data||[],previous,error:null};
 }
 
 function cumulativeAgg_(r){
@@ -858,6 +941,7 @@ function calcCumulativeSaving_(rows){
 
 async function renderCumulativeShare_(selectedDate){
   const data=await fetchCumulativeSnapshots_(selectedDate);
+  if(data.error) console.error('누적모드 조회 실패:',data.error);
   if(!data.current.length) return false;
 
   const currentSaving=calcCumulativeSaving_(data.current);
