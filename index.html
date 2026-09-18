@@ -96,8 +96,8 @@ body.share-mode .share-view{display:block}
   white-space:nowrap;
 }
 .share-total-divider{width:1px;align-self:stretch;background:#efc9b0}
-.share-rate-value{font-size:36px;line-height:1.1;font-weight:900;color:#1565c0;margin-top:6px}
-.share-rate-sub{font-size:14px;font-weight:800;color:#1565c0;margin-top:7px}
+.share-rate-value{font-size:18px;line-height:1.1;font-weight:800;color:#1565c0;margin-top:6px}
+.share-rate-sub{font-size:36px;line-height:1.1;font-weight:900;color:#1565c0;margin-top:7px;white-space:nowrap}
 .share-rate-value.negative,.share-rate-sub.negative{color:#d92d20}
 .share-rate-value.neutral,.share-rate-sub.neutral{color:#667085}
 
@@ -302,8 +302,8 @@ body.share-mode .share-view{display:block}
   .share-total-label{font-size:11px}
   .share-total-sub{font-size:9px}
   .share-total-value{font-size:23px}
-  .share-rate-value{font-size:21px}
-  .share-rate-sub{font-size:9px}
+  .share-rate-value{font-size:12px}
+  .share-rate-sub{font-size:19px}
   .share-section-head{padding:2px 8px 6px}
   .share-section-title-lg{font-size:14px}
   .share-section-date{font-size:9px}
@@ -653,15 +653,16 @@ body.share-mode .share-view{display:block}
 
     <div class="share-total-card">
       <div class="share-total-left">
-        <div class="share-total-label">누적 절감금액 합계</div>
-        <div class="share-total-sub">시간당생산 + 불량률 금액 합계</div>
+        <div class="share-total-label">올해 누적 절감금액 합계</div>
+        <div class="share-total-sub">1월 1일 ~ 기준일 · 생산성 + 불량률</div>
         <div id="shareSavingTotal" class="share-total-value">0원</div>
       </div>
       <div class="share-total-divider"></div>
       <div class="share-total-right">
-        <div class="share-total-label">전일 대비 증감률</div>
-        <div id="shareSavingRate" class="share-rate-value">-</div>
-        <div id="shareSavingDiff" class="share-rate-sub">전일 데이터 없음</div>
+        <div class="share-total-label">전년도 평균 대비</div>
+        <div class="share-total-sub">현재월 누적 · 2025년 월평균</div>
+        <div id="shareSavingDiff" class="share-rate-sub">0원</div>
+        <div id="shareSavingRate" class="share-rate-value">0.0%</div>
       </div>
     </div>
 
@@ -700,7 +701,7 @@ body.share-mode .share-view{display:block}
 <div class="card metric"><div class="k">기준일 평균 시간당 생산량</div><div class="v" id="dayHourly">0</div><div class="d neutral" id="dayHourlyDelta">전일 대비 -</div></div>
 <div class="card metric"><div class="k">기준일 불량률</div><div class="v" id="dayDefect">0%</div><div class="d neutral" id="dayDefectDelta">전일 대비 -</div></div>
 <div class="card metric"><div class="k">전년도 동월 대비</div><div class="v" id="yearCompare">-</div><div class="d neutral">총 생산량 기준</div></div>
-<div class="card metric"><div class="k">누적 절감금액</div><div class="v" id="costSaving">0원</div><div class="d neutral" id="costSavingInfo">시간당 생산량 + 불량 절감금액</div></div>
+<div class="card metric"><div class="k">올해 누적 절감금액</div><div class="v" id="costSaving">0원</div><div class="d neutral" id="costSavingInfo">1월 1일부터 기준일까지</div></div>
 </div>
 
 <div class="compareMetrics section">
@@ -785,6 +786,9 @@ const EQUIPMENTS={
 '지대가공 핀치':['1개조']
 };
 let sb=null, standards=[], daily=[], prodChart=null,equipChart=null;
+// 2025년 월 누적 절감금액. 1~3월은 '집계중'을 제외한 표시 금액.
+const PREVIOUS_YEAR_MONTHLY_SAVINGS=[-10332744,-7000995,-21012886,-7695018,6325670,31613972,15635365,-8168491,1381758,2721427,3505397,-33717690];
+const PREVIOUS_YEAR_MONTHLY_AVERAGE=PREVIOUS_YEAR_MONTHLY_SAVINGS.reduce((sum,value)=>sum+value,0)/PREVIOUS_YEAR_MONTHLY_SAVINGS.length;
 const ENTRY_SLOTS=[
   {label:'인쇄 주간',equipment:'지대 인쇄1호기',teams:['A조','B조','C조']},
   {label:'인쇄 야간',equipment:'지대 인쇄1호기',teams:['A조','B조','C조']},
@@ -870,7 +874,7 @@ function closeShareView(){
 async function fetchCumulativeSnapshots_(selectedDate){
   if(!sb){
     const ok=await ensure();
-    if(!ok) return {current:[],previous:[],error:'Supabase 미연결'};
+    if(!ok) return {current:[],error:'Supabase 미연결'};
   }
 
   const cur=await sb
@@ -882,29 +886,9 @@ async function fetchCumulativeSnapshots_(selectedDate){
 
   if(cur.error){
     console.error('누적 스냅샷 현재일 조회 오류',cur.error);
-    return {current:[],previous:[],error:cur.error.message||String(cur.error)};
+    return {current:[],error:cur.error.message||String(cur.error)};
   }
-
-  const prevDateRes=await sb
-    .from('production_cumulative_snapshots')
-    .select('work_date')
-    .lt('work_date',selectedDate)
-    .order('work_date',{ascending:false})
-    .limit(1);
-
-  let previous=[];
-  if(!prevDateRes.error && prevDateRes.data && prevDateRes.data.length){
-    const prevDate=prevDateRes.data[0].work_date;
-    const prv=await sb
-      .from('production_cumulative_snapshots')
-      .select('*')
-      .eq('work_date',prevDate)
-      .order('equipment',{ascending:true})
-      .order('team',{ascending:true});
-    if(!prv.error) previous=prv.data||[];
-  }
-
-  return {current:cur.data||[],previous,error:null};
+  return {current:cur.data||[],error:null};
 }
 
 function cumulativeAgg_(r){
@@ -939,15 +923,44 @@ function calcCumulativeSaving_(rows){
   return total;
 }
 
+async function calcCumulativeYearSaving_(selectedDate,currentRows){
+  const year=selectedDate.slice(0,4);
+  const currentMonth=Number(selectedDate.slice(5,7));
+  const previousMonths=Array.from({length:currentMonth-1},(_,i)=>i+1);
+  const monthlySavings=await Promise.all(previousMonths.map(async month=>{
+    const monthStart=`${year}-${String(month).padStart(2,'0')}-01`;
+    const nextMonth=`${year}-${String(month+1).padStart(2,'0')}-01`;
+    const latest=await sb.from('production_cumulative_snapshots')
+      .select('work_date').gte('work_date',monthStart).lt('work_date',nextMonth)
+      .order('work_date',{ascending:false}).limit(1);
+    if(latest.error) throw latest.error;
+    if(!latest.data?.length) return 0;
+    const snapshot=await sb.from('production_cumulative_snapshots')
+      .select('*').eq('work_date',latest.data[0].work_date);
+    if(snapshot.error) throw snapshot.error;
+    return calcCumulativeSaving_(snapshot.data||[]);
+  }));
+  return monthlySavings.reduce((sum,value)=>sum+value,calcCumulativeSaving_(currentRows));
+}
+
+function renderSavingComparison_(monthlySaving){
+  const difference=monthlySaving-PREVIOUS_YEAR_MONTHLY_AVERAGE;
+  const rate=difference/Math.abs(PREVIOUS_YEAR_MONTHLY_AVERAGE)*100;
+  $('shareSavingDiff').textContent=`${difference>0?'+':''}${fmt(Math.round(difference))}원`;
+  $('shareSavingDiff').className='share-rate-sub '+shareRateClasses(difference);
+  $('shareSavingRate').textContent=`${rate>0?'+':''}${rate.toFixed(1)}%`;
+  $('shareSavingRate').className='share-rate-value '+shareRateClasses(rate);
+}
+
 async function renderCumulativeShare_(selectedDate){
   const data=await fetchCumulativeSnapshots_(selectedDate);
   if(data.error) console.error('누적모드 조회 실패:',data.error);
   if(!data.current.length) return false;
 
   const currentSaving=calcCumulativeSaving_(data.current);
-  const prevSaving=data.previous.length ? calcCumulativeSaving_(data.previous) : 0;
-  const diff=currentSaving-prevSaving;
-  const rate=prevSaving!==0 ? (diff/Math.abs(prevSaving))*100 : 0;
+  let yearSaving;
+  try{yearSaving=await calcCumulativeYearSaving_(selectedDate,data.current);}
+  catch(error){console.error('연초누적 스냅샷 조회 오류',error);return false;}
 
   const d=new Date(selectedDate+'T00:00:00');
   const ko=['일','월','화','수','목','금','토'][d.getDay()];
@@ -959,28 +972,9 @@ async function renderCumulativeShare_(selectedDate){
   if($('shareHeroTime')) $('shareHeroTime').textContent='업데이트 '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false});
 
   if($('shareSavingTotal')){
-    $('shareSavingTotal').textContent=fmt(Math.round(currentSaving))+'원';
+    $('shareSavingTotal').textContent=fmt(Math.round(yearSaving))+'원';
   }
-
-  if($('shareSavingRate')){
-    if(data.previous.length){
-      $('shareSavingRate').textContent=(rate>0?'+':'')+rate.toFixed(1)+'%';
-      $('shareSavingRate').className='share-rate-value '+(rate<0?'negative':(rate===0?'neutral':''));
-    }else{
-      $('shareSavingRate').textContent='-';
-      $('shareSavingRate').className='share-rate-value neutral';
-    }
-  }
-
-  if($('shareSavingDiff')){
-    if(data.previous.length){
-      $('shareSavingDiff').textContent='전일 대비 '+(diff>0?'+':'')+fmt(Math.round(diff))+'원';
-      $('shareSavingDiff').className='share-rate-sub '+(diff<0?'negative':(diff===0?'neutral':''));
-    }else{
-      $('shareSavingDiff').textContent='전일 데이터 없음';
-      $('shareSavingDiff').className='share-rate-sub neutral';
-    }
-  }
+  renderSavingComparison_(currentSaving);
 
   const host=$('shareProcessRows');
   if(!host) return true;
@@ -1053,31 +1047,16 @@ async function renderCumulativeShare_(selectedDate){
 function renderShareView(monthRows, dayRows, prevRows, selectedDate){
   const D=agg(dayRows);
   const selectedMonth=selectedDate.slice(0,7);
-
-  const prevDateObj=new Date(selectedDate+'T00:00:00');
-  prevDateObj.setDate(prevDateObj.getDate()-1);
-  const prevDate=prevDateObj.toISOString().slice(0,10);
-
-  const prevCumRows=daily.filter(r=>r.work_date.startsWith(selectedMonth) && r.work_date<=prevDate);
-  const currentSaving=calcSaving(monthRows);
-  const prevSaving=prevCumRows.length ? calcSaving(prevCumRows) : null;
-  const diffSaving=prevSaving===null ? null : currentSaving-prevSaving;
-  const rateSaving=(prevSaving===null || prevSaving===0) ? null : ((currentSaving-prevSaving)/Math.abs(prevSaving))*100;
+  const currentMonthRows=daily.filter(r=>r.work_date.startsWith(selectedMonth) && r.work_date<=selectedDate);
+  const currentSaving=calcSaving(currentMonthRows);
+  const yearSaving=calcYearSaving_(selectedDate);
 
   $('shareHeroDate').textContent=formatKoreanDate(selectedDate);
   $('shareHeroTime').textContent='업데이트 '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false});
   $('shareSectionDate').textContent=`${formatKoreanDate(selectedDate)} 기준`;
 
-  $('shareSavingTotal').textContent=fmt(Math.round(currentSaving))+'원';
-  $('shareSavingRate').textContent = rateSaving===null ? '-' : `${rateSaving>0?'+':''}${rateSaving.toFixed(1)}%`;
-  $('shareSavingRate').className='share-rate-value '+shareRateClasses(rateSaving);
-  if(diffSaving===null){
-    $('shareSavingDiff').textContent='전일 데이터 없음';
-    $('shareSavingDiff').className='share-rate-sub neutral';
-  }else{
-    $('shareSavingDiff').textContent=`전일 대비 ${diffSaving>0?'+':''}${fmt(Math.round(diffSaving))}원`;
-    $('shareSavingDiff').className='share-rate-sub '+shareRateClasses(diffSaving);
-  }
+  $('shareSavingTotal').textContent=fmt(Math.round(yearSaving))+'원';
+  renderSavingComparison_(currentSaving);
 
   const container=$('shareProcessRows');
   container.innerHTML='';
@@ -1209,7 +1188,7 @@ async function downloadShareJPG(){
 
 async function shareSummary(){
   const title='생산 실적 요약';
-  const text=`${$('shareHeroDate').textContent}\n누적 절감금액 ${$('shareSavingTotal').textContent}\n${$('shareSavingDiff').textContent}`;
+  const text=`${$('shareHeroDate').textContent}\n올해 누적 절감금액 ${$('shareSavingTotal').textContent}\n전년도 평균 대비 ${$('shareSavingDiff').textContent} (${$('shareSavingRate').textContent})`;
   if(navigator.share){
     try{ await navigator.share({title,text}); }catch(e){}
   }else{
@@ -1247,6 +1226,24 @@ function calcSaving(rows){
     });
   });
   return total;
+}
+function calcYearSaving_(selectedDate){
+  const yearStart=selectedDate.slice(0,4)+'-01-01';
+  const months=new Map();
+  daily.filter(r=>r.work_date>=yearStart&&r.work_date<=selectedDate).forEach(r=>{
+    const month=r.work_date.slice(0,7);
+    if(!months.has(month)) months.set(month,[]);
+    months.get(month).push(r);
+  });
+  return [...months.values()].reduce((total,rows)=>total+calcSaving(rows),0);
+}
+async function renderCumulativeAdminSaving_(selectedDate){
+  const result=await fetchCumulativeSnapshots_(selectedDate);
+  if(result.error||!result.current.length) throw new Error(result.error||'기준일 누적 스냅샷 없음');
+  const yearSaving=await calcCumulativeYearSaving_(selectedDate,result.current);
+  if($('date').value===selectedDate){
+    $('costSaving').textContent=fmt(Math.round(yearSaving))+'원';
+  }
 }
 function pctChange(cur,prev){
   if(!prev)return null;
@@ -1567,13 +1564,25 @@ async function connect(){
   }
 }
 async function ensure(){if(sb)return true;await connect();return !!sb}
-async function loadAll(){if(!await ensure())return;const[s,d]=await Promise.all([sb.from('production_standards').select('*').eq('active',true).order('sort_order'),sb.from('production_daily_v3').select('*').order('work_date')]);if(s.error){alert(s.error.message);return}if(d.error){alert(d.error.message);return}standards=s.data||[];
+async function fetchAllDaily_(){
+  const rows=[];
+  const pageSize=1000;
+  while(true){
+    const {data,error}=await sb.from('production_daily_v3').select('*')
+      .order('work_date').order('equipment').order('team')
+      .range(rows.length,rows.length+pageSize-1);
+    if(error) throw error;
+    rows.push(...(data||[]));
+    if(!data||data.length<pageSize) return rows;
+  }
+}
+async function loadAll(){if(!await ensure())return;let s,d;try{[s,d]=await Promise.all([sb.from('production_standards').select('*').eq('active',true).order('sort_order'),fetchAllDaily_()]);}catch(error){alert(error.message||String(error));return}if(s.error){alert(s.error.message);return}standards=s.data||[];
     standards=standards.map(x=>{
       if(x.equipment==='지대 보터머'&&x.team==='A조') return {...x,worker_name:'홍정용'};
       if(x.equipment==='지대 튜버'&&x.team==='A조') return {...x,worker_name:'김재열'};
       return x;
     });
-    daily=d.data||[];render();loadEntryDate();
+    daily=d;render();loadEntryDate();
     if(AUTO_SHARE_FROM_URL){
       AUTO_SHARE_FROM_URL=false;
       openShareView();
@@ -1738,7 +1747,6 @@ $('prevDefectDelta').innerHTML='당월 대비 '+deltaHtml(M.defect,PM.defect,'%p
 $('prevSavingDelta').innerHTML='당월 대비 '+deltaPercentHtml(currentSaving,prevMonthSaving,true);
 const body=$('summaryBody');
 body.innerHTML='';
-let totalSavingAll=0;
 
 const equipmentOrder=[...new Set(standards.map(s=>s.equipment))];
 
@@ -1769,7 +1777,6 @@ equipmentOrder.forEach(eq=>{
 
     const saving=hourlySaving+defectSaving;
 
-    totalSavingAll+=saving;
 
     const prevHourlyDelta=pa?ma.hourly-pa.hourly:null;
     const prevDefectDelta=pa?ma.defect-pa.defect:null;
@@ -1796,8 +1803,17 @@ equipmentOrder.forEach(eq=>{
   });
 });
 
-$('costSaving').textContent=fmt(Math.round(totalSavingAll))+'원';
-$('costSavingInfo').textContent='생산성 개선 + 불량률 개선 기준';
+$('costSaving').textContent=fmt(Math.round(calcYearSaving_(sel)))+'원';
+$('costSavingInfo').textContent='1월 1일부터 기준일까지';
+if(CUMULATIVE_MODE&&sb){
+  $('costSaving').textContent='조회 중';
+  renderCumulativeAdminSaving_(sel).catch(error=>{
+    if($('date').value===sel){
+      console.error('관리화면 연초누적 조회 오류',error);
+      $('costSaving').textContent='데이터 없음';
+    }
+  });
+}
 
 if(!body.innerHTML)body.innerHTML='<tr><td colspan="17" class="empty">기준정보가 없습니다. SQL 초기 데이터를 확인하세요.</td></tr>';
 renderCharts(monthRows,m);
