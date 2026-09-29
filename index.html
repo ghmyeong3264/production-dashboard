@@ -75,6 +75,7 @@ body.share-mode .share-view{display:block}
   padding:10px 14px;border-radius:12px;font-size:13px;
   box-shadow:0 2px 8px rgba(0,0,0,.08);white-space:nowrap;
 }
+.share-btn:disabled{opacity:.65;cursor:wait}
 
 /* 누적 절감금액 */
 .share-total-card{
@@ -683,8 +684,8 @@ body.share-mode .share-view{display:block}
           <button class="share-btn" onclick="downloadShareJPG()">
             <span>JPG 저장</span>
           </button>
-          <button class="share-btn" onclick="shareSummary()">
-            <span>공유하기</span>
+          <button id="shareButton" class="share-btn" onclick="shareSummary()">
+            <span id="shareButtonLabel">공유하기</span>
           </button>
           <button class="share-btn" onclick="closeShareView()">
             <span>관리화면</span>
@@ -904,10 +905,12 @@ async function openShareView(){
       if($('shareSavingRate')) $('shareSavingRate').textContent='-';
       if($('shareSavingDiff')) $('shareSavingDiff').textContent='누적 스냅샷 확인 필요';
     }
+    scheduleShareJPGPrime_();
     return;
   }
 
   render();
+  scheduleShareJPGPrime_();
 }
 function closeShareView(){
   document.body.classList.remove('share-mode');
@@ -1212,33 +1215,75 @@ function getProcessMeta(eq){
   if(eq==='지대 보터머') return {cls:'bottomer', icon:'■', name:'보터머'};
   return {cls:'pinch', icon:'🔗', name:'핀치'};
 }
+let shareJPGCache=null;
+let shareJPGCachePromise=null;
+
+function currentShareJPGKey_(){
+  return [
+    $('shareHeroDate')?.textContent||'',
+    $('shareProductionTotal')?.textContent||'',
+    $('shareShipmentTotal')?.textContent||'',
+    $('shareSectionDate')?.textContent||'',
+    $('shareProcessRows')?.innerText||''
+  ].join('|');
+}
+
 async function createShareJPG_(){
   const target=document.querySelector('.share-phone');
   if(!target) throw new Error('공유용 화면을 찾지 못했습니다.');
 
-  const buttons=target.querySelector('.share-hero-buttons');
-  const prevVisibility=buttons ? buttons.style.visibility : '';
-  if(buttons) buttons.style.visibility='hidden';
+  const key=currentShareJPGKey_();
+  const canvas=await html2canvas(target,{
+    backgroundColor:'#f7f9fc',
+    scale:2,
+    useCORS:true,
+    logging:false,
+    windowWidth:target.scrollWidth,
+    windowHeight:target.scrollHeight,
+    onclone:clonedDoc=>{
+      const clonedButtons=clonedDoc.querySelector('.share-hero-buttons');
+      if(clonedButtons) clonedButtons.style.visibility='hidden';
+    }
+  });
 
-  try{
-    const canvas=await html2canvas(target,{
-      backgroundColor:'#f7f9fc',
-      scale:2,
-      useCORS:true,
-      logging:false,
-      windowWidth:target.scrollWidth,
-      windowHeight:target.scrollHeight
-    });
+  const selectedDate=$('date').value || new Date().toISOString().slice(0,10);
+  const filename=`생산실적요약_${selectedDate}.jpg`;
+  const blob=await new Promise((resolve,reject)=>{
+    canvas.toBlob(value=>value ? resolve(value) : reject(new Error('JPG 파일 생성에 실패했습니다.')),'image/jpeg',0.95);
+  });
+  return {blob,filename,key};
+}
 
-    const selectedDate=$('date').value || new Date().toISOString().slice(0,10);
-    const filename=`생산실적요약_${selectedDate}.jpg`;
-    const blob=await new Promise((resolve,reject)=>{
-      canvas.toBlob(value=>value ? resolve(value) : reject(new Error('JPG 파일 생성에 실패했습니다.')),'image/jpeg',0.95);
+function primeShareJPG_(){
+  const key=currentShareJPGKey_();
+  if(shareJPGCache && shareJPGCache.key===key) return Promise.resolve(shareJPGCache);
+  if(shareJPGCachePromise) return shareJPGCachePromise;
+
+  shareJPGCachePromise=createShareJPG_()
+    .then(result=>{
+      shareJPGCache=result;
+      return result;
+    })
+    .finally(()=>{ shareJPGCachePromise=null; });
+  return shareJPGCachePromise;
+}
+
+function scheduleShareJPGPrime_(){
+  shareJPGCache=null;
+  const button=$('shareButton');
+  const label=$('shareButtonLabel');
+  if(button) button.disabled=true;
+  if(label) label.textContent='JPG 준비 중';
+  setTimeout(()=>{
+    primeShareJPG_().then(()=>{
+      if(button) button.disabled=false;
+      if(label) label.textContent='공유하기';
+    }).catch(error=>{
+      console.error('공유용 JPG 미리 생성 실패',error);
+      if(button) button.disabled=false;
+      if(label) label.textContent='공유하기';
     });
-    return {blob,filename};
-  }finally{
-    if(buttons) buttons.style.visibility=prevVisibility;
-  }
+  },100);
 }
 
 async function downloadShareJPG(){
@@ -1260,13 +1305,18 @@ async function downloadShareJPG(){
 
 async function shareSummary(){
   const title='생산 실적 요약';
-  const text=`${$('shareHeroDate').textContent}\n09월 누적 생산수량 ${$('shareProductionTotal').textContent}\n09월 누적 출고수량 ${$('shareShipmentTotal').textContent}`;
   try{
-    const {blob,filename}=await createShareJPG_();
+    const prepared=shareJPGCache;
+    if(!prepared || prepared.key!==currentShareJPGKey_()){
+      scheduleShareJPGPrime_();
+      alert('JPG를 준비하고 있습니다. 잠시 후 공유하기를 다시 눌러주세요.');
+      return;
+    }
+    const {blob,filename}=prepared;
     const file=new File([blob],filename,{type:'image/jpeg'});
-    const shareData={title,text,files:[file]};
+    const shareData={title,files:[file]};
 
-    if(navigator.share && (!navigator.canShare || navigator.canShare({files:[file]}))){
+    if(navigator.share && (!navigator.canShare || navigator.canShare(shareData))){
       await navigator.share(shareData);
       return;
     }
