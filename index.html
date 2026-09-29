@@ -618,25 +618,32 @@ body.share-mode .share-view{display:block}
 #shareProductionTotal{color:#1769e0}
 #shareShipmentTotal{color:#079455}
 .share-process-baseline{
-  width:100%;
-  box-sizing:border-box;
-  margin-bottom:12px;
-  padding:7px 4px;
-  border-radius:10px;
-  background:rgba(255,255,255,.2);
-  border:1px solid rgba(255,255,255,.38);
+  grid-column:1 / -1;
+  display:flex;
+  align-items:baseline;
+  justify-content:center;
+  gap:12px;
+  min-width:0;
+  padding:10px 14px;
+  border-radius:14px;
+  border:2px solid;
+  box-shadow:0 2px 7px rgba(16,42,77,.06);
 }
-.share-process-baseline-title{font-size:9px;font-weight:900;white-space:nowrap}
-.share-process-baseline-value{margin-top:3px;font-size:17px;line-height:1;font-weight:900;white-space:nowrap}
-.share-process-baseline-unit{font-size:8px;font-weight:800;opacity:.9}
+.share-process-row.print .share-process-baseline{background:#eaf3ff;border-color:#1d73e8;color:#155fc3}
+.share-process-row.tuber .share-process-baseline{background:#e9fbf3;border-color:#12a66a;color:#087b4b}
+.share-process-row.bottomer .share-process-baseline{background:#fff2e8;border-color:#f97316;color:#c94d05}
+.share-process-row.pinch .share-process-baseline{background:#f1ecff;border-color:#6d3de8;color:#5630bd}
+.share-process-baseline-title{font-size:15px;font-weight:900;white-space:nowrap}
+.share-process-baseline-value{font-size:28px;line-height:1;font-weight:900;letter-spacing:-.5px;white-space:nowrap}
+.share-process-baseline-unit{font-size:12px;font-weight:900;opacity:.9}
 .share-current-value{font-size:35px !important}
 .share-change{font-size:22px !important}
 .share-save-value{font-size:31px !important}
 @media (max-width:520px){
-  .share-process-baseline{margin-bottom:7px;padding:5px 2px;border-radius:8px}
-  .share-process-baseline-title{font-size:7px}
-  .share-process-baseline-value{font-size:12px}
-  .share-process-baseline-unit{font-size:6px}
+  .share-process-baseline{gap:6px;padding:7px 5px;border-radius:10px}
+  .share-process-baseline-title{font-size:10px}
+  .share-process-baseline-value{font-size:19px}
+  .share-process-baseline-unit{font-size:8px}
   .share-current-value{font-size:16px !important}
   .share-change{font-size:11px !important}
   .share-save-value{font-size:17px !important}
@@ -957,11 +964,11 @@ function processLabelHtml_(equipment,meta){
   const baselineText=baseline
     ? baseline.toLocaleString('ko-KR',{minimumFractionDigits:Number.isInteger(baseline)?0:1,maximumFractionDigits:1})
     : '-';
-  return `<div class="share-process-label">
-    <div class="share-process-baseline">
-      <div class="share-process-baseline-title">25년 실적 기준</div>
-      <div class="share-process-baseline-value">${baselineText} <span class="share-process-baseline-unit">PCS/H</span></div>
-    </div>
+  return `<div class="share-process-baseline">
+    <div class="share-process-baseline-title">25년 실적 기준</div>
+    <div class="share-process-baseline-value">${baselineText} <span class="share-process-baseline-unit">PCS/H</span></div>
+  </div>
+  <div class="share-process-label">
     <div class="icon">${meta.icon}</div>
     <div class="name">${meta.name}</div>
   </div><div class="share-team-grid"></div>`;
