@@ -606,6 +606,55 @@ body.share-mode .share-view{display:block}
     grid-template-columns:minmax(260px,320px) 1fr 1fr !important;
   }
 }
+
+/* V4.21 9월 누적 수량 및 25년 실적 기준 카드 */
+.share-total-card{
+  background:#fff !important;
+  border-color:#d8e4f4 !important;
+  grid-template-columns:minmax(0,1fr) 1px minmax(0,1fr) !important;
+}
+.share-total-left,.share-total-right{min-width:0}
+.share-total-divider{background:#d8e4f4 !important}
+#shareProductionTotal{color:#1769e0}
+#shareShipmentTotal{color:#079455}
+.share-baseline-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  padding:0 18px 14px;
+}
+.share-baseline-card{
+  min-width:0;
+  border-radius:15px;
+  padding:11px 13px;
+  color:#fff;
+  box-shadow:0 3px 9px rgba(16,42,77,.08);
+}
+.share-baseline-card.print{background:#1d73e8}
+.share-baseline-card.tuber{background:#12a66a}
+.share-baseline-card.bottomer{background:#f97316}
+.share-baseline-card.pinch{background:#6d3de8}
+.share-baseline-title{font-size:13px;font-weight:900;opacity:.95}
+.share-baseline-main{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px}
+.share-baseline-value{font-size:22px;line-height:1;font-weight:900;letter-spacing:-.5px}
+.share-baseline-unit{font-size:11px;font-weight:800;opacity:.9}
+.share-baseline-badge{margin-left:auto;padding:3px 7px;border-radius:999px;background:rgba(255,255,255,.2);font-size:10px;font-weight:900}
+.share-current-value{font-size:35px !important}
+.share-change{font-size:22px !important}
+.share-save-value{font-size:31px !important}
+@media (max-width:900px){
+  .share-baseline-grid{grid-template-columns:repeat(2,minmax(0,1fr));padding:0 10px 10px}
+}
+@media (max-width:520px){
+  .share-baseline-grid{gap:6px;padding:0 8px 8px}
+  .share-baseline-card{padding:8px}
+  .share-baseline-title{font-size:9px}
+  .share-baseline-value{font-size:15px}
+  .share-baseline-unit,.share-baseline-badge{font-size:8px}
+  .share-current-value{font-size:16px !important}
+  .share-change{font-size:11px !important}
+  .share-save-value{font-size:17px !important}
+}
 @media print{
   @page{size:A4 landscape;margin:8mm}
   body{background:#fff}
@@ -653,22 +702,28 @@ body.share-mode .share-view{display:block}
 
     <div class="share-total-card">
       <div class="share-total-left">
-        <div class="share-total-label">올해 누적 절감금액 합계</div>
-        <div class="share-total-sub">1월 1일 ~ 기준일 · 생산성 + 불량률</div>
-        <div id="shareSavingTotal" class="share-total-value">0원</div>
+        <div class="share-total-label">09월 누적 생산수량</div>
+        <div class="share-total-sub">9월 1일 ~ 현재 입력 기준</div>
+        <div id="shareProductionTotal" class="share-total-value">2,233,090</div>
       </div>
       <div class="share-total-divider"></div>
       <div class="share-total-right">
-        <div class="share-total-label">전년도 평균 대비</div>
-        <div class="share-total-sub">현재월 누적 · 2025년 월평균</div>
-        <div id="shareSavingDiff" class="share-rate-sub">0원</div>
-        <div id="shareSavingRate" class="share-rate-value">0.0%</div>
+        <div class="share-total-label">09월 누적 출고수량</div>
+        <div class="share-total-sub">9월 1일 ~ 현재 입력 기준</div>
+        <div id="shareShipmentTotal" class="share-total-value">2,659,294</div>
       </div>
     </div>
 
     <div class="share-section-head">
       <div class="share-section-title-lg">조별 생산 현황 (양품 기준)</div>
       <div id="shareSectionDate" class="share-section-date">-</div>
+    </div>
+
+    <div class="share-baseline-grid" aria-label="25년 실적 기준">
+      <div class="share-baseline-card print"><div class="share-baseline-title">인쇄기 25년 실적 기준</div><div class="share-baseline-main"><span class="share-baseline-value">값 입력 예정</span><span class="share-baseline-unit">PCS/H</span><span class="share-baseline-badge">추후 입력</span></div></div>
+      <div class="share-baseline-card tuber"><div class="share-baseline-title">튜버 25년 실적 기준</div><div class="share-baseline-main"><span class="share-baseline-value">값 입력 예정</span><span class="share-baseline-unit">PCS/H</span><span class="share-baseline-badge">추후 입력</span></div></div>
+      <div class="share-baseline-card bottomer"><div class="share-baseline-title">보터머 25년 실적 기준</div><div class="share-baseline-main"><span class="share-baseline-value">값 입력 예정</span><span class="share-baseline-unit">PCS/H</span><span class="share-baseline-badge">추후 입력</span></div></div>
+      <div class="share-baseline-card pinch"><div class="share-baseline-title">핀치 25년 실적 기준</div><div class="share-baseline-main"><span class="share-baseline-value">값 입력 예정</span><span class="share-baseline-unit">PCS/H</span><span class="share-baseline-badge">추후 입력</span></div></div>
     </div>
 
     <div id="shareProcessRows" class="share-process-rows"></div>
@@ -789,6 +844,8 @@ let sb=null, standards=[], daily=[], prodChart=null,equipChart=null;
 // 2025년 월 누적 절감금액. 1~3월은 '집계중'을 제외한 표시 금액.
 const PREVIOUS_YEAR_MONTHLY_SAVINGS=[-10332744,-7000995,-21012886,-7695018,6325670,31613972,15635365,-8168491,1381758,2721427,3505397,-33717690];
 const PREVIOUS_YEAR_MONTHLY_AVERAGE=PREVIOUS_YEAR_MONTHLY_SAVINGS.reduce((sum,value)=>sum+value,0)/PREVIOUS_YEAR_MONTHLY_SAVINGS.length;
+const SEPTEMBER_TOTAL_PRODUCTION=2233090;
+const SEPTEMBER_TOTAL_SHIPMENT=2659294;
 const ENTRY_SLOTS=[
   {label:'인쇄 주간',equipment:'지대 인쇄1호기',teams:['A조','B조','C조']},
   {label:'인쇄 야간',equipment:'지대 인쇄1호기',teams:['A조','B조','C조']},
@@ -907,6 +964,20 @@ function findStandard_(equipment,team){
   return standards.find(s=>s.equipment===equipment && s.team===team) || null;
 }
 
+function getProcessComparisonBaseline_(equipment,field,fallback=0){
+  const priorTeams=standards.filter(s=>s.equipment===equipment && (s.team==='A조'||s.team==='B조'));
+  if(priorTeams.length===2){
+    return priorTeams.reduce((sum,s)=>sum+Number(s[field]||0),0)/2;
+  }
+  const first=standards.find(s=>s.equipment===equipment);
+  return first ? Number(first[field]||fallback) : Number(fallback||0);
+}
+
+function renderSeptemberTotals_(){
+  if($('shareProductionTotal')) $('shareProductionTotal').textContent=fmt(SEPTEMBER_TOTAL_PRODUCTION);
+  if($('shareShipmentTotal')) $('shareShipmentTotal').textContent=fmt(SEPTEMBER_TOTAL_SHIPMENT);
+}
+
 function calcCumulativeSaving_(rows){
   let total=0;
   rows.forEach(r=>{
@@ -957,11 +1028,6 @@ async function renderCumulativeShare_(selectedDate){
   if(data.error) console.error('누적모드 조회 실패:',data.error);
   if(!data.current.length) return false;
 
-  const currentSaving=calcCumulativeSaving_(data.current);
-  let yearSaving;
-  try{yearSaving=await calcCumulativeYearSaving_(selectedDate,data.current);}
-  catch(error){console.error('연초누적 스냅샷 조회 오류',error);return false;}
-
   const d=new Date(selectedDate+'T00:00:00');
   const ko=['일','월','화','수','목','금','토'][d.getDay()];
   const dateText=`${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 (${ko})`;
@@ -971,10 +1037,7 @@ async function renderCumulativeShare_(selectedDate){
   if($('shareSectionDate')) $('shareSectionDate').textContent=dateText+' 기준';
   if($('shareHeroTime')) $('shareHeroTime').textContent='업데이트 '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false});
 
-  if($('shareSavingTotal')){
-    $('shareSavingTotal').textContent=fmt(Math.round(yearSaving))+'원';
-  }
-  renderSavingComparison_(currentSaving);
+  renderSeptemberTotals_();
 
   const host=$('shareProcessRows');
   if(!host) return true;
@@ -993,14 +1056,16 @@ async function renderCumulativeShare_(selectedDate){
       if(!s) return;
 
       const a=cumulativeAgg_(r);
-      const hBase=Number(s.baseline_hourly_output||0);
-      const dBase=Number(s.baseline_defect_rate||0);
+      const savingHBase=Number(s.baseline_hourly_output||0);
+      const savingDBase=Number(s.baseline_defect_rate||0);
+      const hBase=getProcessComparisonBaseline_(eq,'baseline_hourly_output',savingHBase);
+      const dBase=getProcessComparisonBaseline_(eq,'baseline_defect_rate',savingDBase);
       const hRate=Number(s.hourly_cost_rate||0);
       const dRate=Number(s.defect_cost_rate||0);
 
       const saving =
-        (a.hourly-hBase)*(a.loadMinutes/60)*hRate +
-        ((dBase-a.defect)/100)*(a.good+a.bad)*dRate;
+        (a.hourly-savingHBase)*(a.loadMinutes/60)*hRate +
+        ((savingDBase-a.defect)/100)*(a.good+a.bad)*dRate;
 
       const hPct=hBase ? ((a.hourly-hBase)/hBase*100) : 0;
       const defectPct=dBase ? ((a.defect-dBase)/dBase*100) : 0;
@@ -1048,15 +1113,11 @@ function renderShareView(monthRows, dayRows, prevRows, selectedDate){
   const D=agg(dayRows);
   const selectedMonth=selectedDate.slice(0,7);
   const currentMonthRows=daily.filter(r=>r.work_date.startsWith(selectedMonth) && r.work_date<=selectedDate);
-  const currentSaving=calcSaving(currentMonthRows);
-  const yearSaving=calcYearSaving_(selectedDate);
-
   $('shareHeroDate').textContent=formatKoreanDate(selectedDate);
   $('shareHeroTime').textContent='업데이트 '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false});
   $('shareSectionDate').textContent=`${formatKoreanDate(selectedDate)} 기준`;
 
-  $('shareSavingTotal').textContent=fmt(Math.round(yearSaving))+'원';
-  renderSavingComparison_(currentSaving);
+  renderSeptemberTotals_();
 
   const container=$('shareProcessRows');
   container.innerHTML='';
@@ -1074,12 +1135,14 @@ function renderShareView(monthRows, dayRows, prevRows, selectedDate){
     stds.forEach(s=>{
       const rows=monthRows.filter(r=>r.equipment===s.equipment && r.team===s.team);
       const a=agg(rows);
-      const hBase=toNum(s.baseline_hourly_output);
-      const defectBase=toNum(s.baseline_defect_rate);
+      const savingHBase=toNum(s.baseline_hourly_output);
+      const savingDefectBase=toNum(s.baseline_defect_rate);
+      const hBase=getProcessComparisonBaseline_(eq,'baseline_hourly_output',savingHBase);
+      const defectBase=getProcessComparisonBaseline_(eq,'baseline_defect_rate',savingDefectBase);
       const loadHours=a.loadMinutes/60;
-      const hourlySaving=(a.hourly-hBase)*loadHours*toNum(s.hourly_cost_rate);
+      const hourlySaving=(a.hourly-savingHBase)*loadHours*toNum(s.hourly_cost_rate);
       const totalQty=a.good+a.bad;
-      const defectSaving=((defectBase-a.defect)/100)*totalQty*toNum(s.defect_cost_rate);
+      const defectSaving=((savingDefectBase-a.defect)/100)*totalQty*toNum(s.defect_cost_rate);
       const saving=hourlySaving+defectSaving;
 
       const card=document.createElement('div');
@@ -1188,7 +1251,7 @@ async function downloadShareJPG(){
 
 async function shareSummary(){
   const title='생산 실적 요약';
-  const text=`${$('shareHeroDate').textContent}\n올해 누적 절감금액 ${$('shareSavingTotal').textContent}\n전년도 평균 대비 ${$('shareSavingDiff').textContent} (${$('shareSavingRate').textContent})`;
+  const text=`${$('shareHeroDate').textContent}\n09월 누적 생산수량 ${$('shareProductionTotal').textContent}\n09월 누적 출고수량 ${$('shareShipmentTotal').textContent}`;
   if(navigator.share){
     try{ await navigator.share({title,text}); }catch(e){}
   }else{
