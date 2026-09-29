@@ -607,7 +607,7 @@ body.share-mode .share-view{display:block}
   }
 }
 
-/* V4.21 9월 누적 수량 및 25년 실적 기준 카드 */
+/* V4.22 9월 누적 수량 및 공정별 25년 실적 기준 */
 .share-total-card{
   background:#fff !important;
   border-color:#d8e4f4 !important;
@@ -617,40 +617,26 @@ body.share-mode .share-view{display:block}
 .share-total-divider{background:#d8e4f4 !important}
 #shareProductionTotal{color:#1769e0}
 #shareShipmentTotal{color:#079455}
-.share-baseline-grid{
-  display:grid;
-  grid-template-columns:repeat(4,minmax(0,1fr));
-  gap:10px;
-  padding:0 18px 14px;
+.share-process-baseline{
+  width:100%;
+  box-sizing:border-box;
+  margin-bottom:12px;
+  padding:7px 4px;
+  border-radius:10px;
+  background:rgba(255,255,255,.2);
+  border:1px solid rgba(255,255,255,.38);
 }
-.share-baseline-card{
-  min-width:0;
-  border-radius:15px;
-  padding:11px 13px;
-  color:#fff;
-  box-shadow:0 3px 9px rgba(16,42,77,.08);
-}
-.share-baseline-card.print{background:#1d73e8}
-.share-baseline-card.tuber{background:#12a66a}
-.share-baseline-card.bottomer{background:#f97316}
-.share-baseline-card.pinch{background:#6d3de8}
-.share-baseline-title{font-size:13px;font-weight:900;opacity:.95}
-.share-baseline-main{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px}
-.share-baseline-value{font-size:22px;line-height:1;font-weight:900;letter-spacing:-.5px}
-.share-baseline-unit{font-size:11px;font-weight:800;opacity:.9}
-.share-baseline-badge{margin-left:auto;padding:3px 7px;border-radius:999px;background:rgba(255,255,255,.2);font-size:10px;font-weight:900}
+.share-process-baseline-title{font-size:9px;font-weight:900;white-space:nowrap}
+.share-process-baseline-value{margin-top:3px;font-size:17px;line-height:1;font-weight:900;white-space:nowrap}
+.share-process-baseline-unit{font-size:8px;font-weight:800;opacity:.9}
 .share-current-value{font-size:35px !important}
 .share-change{font-size:22px !important}
 .share-save-value{font-size:31px !important}
-@media (max-width:900px){
-  .share-baseline-grid{grid-template-columns:repeat(2,minmax(0,1fr));padding:0 10px 10px}
-}
 @media (max-width:520px){
-  .share-baseline-grid{gap:6px;padding:0 8px 8px}
-  .share-baseline-card{padding:8px}
-  .share-baseline-title{font-size:9px}
-  .share-baseline-value{font-size:15px}
-  .share-baseline-unit,.share-baseline-badge{font-size:8px}
+  .share-process-baseline{margin-bottom:7px;padding:5px 2px;border-radius:8px}
+  .share-process-baseline-title{font-size:7px}
+  .share-process-baseline-value{font-size:12px}
+  .share-process-baseline-unit{font-size:6px}
   .share-current-value{font-size:16px !important}
   .share-change{font-size:11px !important}
   .share-save-value{font-size:17px !important}
@@ -717,13 +703,6 @@ body.share-mode .share-view{display:block}
     <div class="share-section-head">
       <div class="share-section-title-lg">조별 생산 현황 (양품 기준)</div>
       <div id="shareSectionDate" class="share-section-date">-</div>
-    </div>
-
-    <div class="share-baseline-grid" aria-label="25년 실적 기준">
-      <div class="share-baseline-card print"><div class="share-baseline-title">인쇄기 25년 실적 기준</div><div class="share-baseline-main"><span class="share-baseline-value">값 입력 예정</span><span class="share-baseline-unit">PCS/H</span><span class="share-baseline-badge">추후 입력</span></div></div>
-      <div class="share-baseline-card tuber"><div class="share-baseline-title">튜버 25년 실적 기준</div><div class="share-baseline-main"><span class="share-baseline-value">값 입력 예정</span><span class="share-baseline-unit">PCS/H</span><span class="share-baseline-badge">추후 입력</span></div></div>
-      <div class="share-baseline-card bottomer"><div class="share-baseline-title">보터머 25년 실적 기준</div><div class="share-baseline-main"><span class="share-baseline-value">값 입력 예정</span><span class="share-baseline-unit">PCS/H</span><span class="share-baseline-badge">추후 입력</span></div></div>
-      <div class="share-baseline-card pinch"><div class="share-baseline-title">핀치 25년 실적 기준</div><div class="share-baseline-main"><span class="share-baseline-value">값 입력 예정</span><span class="share-baseline-unit">PCS/H</span><span class="share-baseline-badge">추후 입력</span></div></div>
     </div>
 
     <div id="shareProcessRows" class="share-process-rows"></div>
@@ -973,6 +952,21 @@ function getProcessComparisonBaseline_(equipment,field,fallback=0){
   return first ? Number(first[field]||fallback) : Number(fallback||0);
 }
 
+function processLabelHtml_(equipment,meta){
+  const baseline=getProcessComparisonBaseline_(equipment,'baseline_hourly_output',0);
+  const baselineText=baseline
+    ? baseline.toLocaleString('ko-KR',{minimumFractionDigits:Number.isInteger(baseline)?0:1,maximumFractionDigits:1})
+    : '-';
+  return `<div class="share-process-label">
+    <div class="share-process-baseline">
+      <div class="share-process-baseline-title">25년 실적 기준</div>
+      <div class="share-process-baseline-value">${baselineText} <span class="share-process-baseline-unit">PCS/H</span></div>
+    </div>
+    <div class="icon">${meta.icon}</div>
+    <div class="name">${meta.name}</div>
+  </div><div class="share-team-grid"></div>`;
+}
+
 function renderSeptemberTotals_(){
   if($('shareProductionTotal')) $('shareProductionTotal').textContent=fmt(SEPTEMBER_TOTAL_PRODUCTION);
   if($('shareShipmentTotal')) $('shareShipmentTotal').textContent=fmt(SEPTEMBER_TOTAL_SHIPMENT);
@@ -1048,7 +1042,7 @@ async function renderCumulativeShare_(selectedDate){
     const meta=getProcessMeta(eq);
     const row=document.createElement('div');
     row.className=`share-process-row ${meta.cls}`;
-    row.innerHTML=`<div class="share-process-label"><div class="icon">${meta.icon}</div><div class="name">${meta.name}</div></div><div class="share-team-grid"></div>`;
+    row.innerHTML=processLabelHtml_(eq,meta);
     const grid=row.querySelector('.share-team-grid');
 
     data.current.filter(r=>r.equipment===eq).forEach(r=>{
@@ -1129,7 +1123,7 @@ function renderShareView(monthRows, dayRows, prevRows, selectedDate){
     const meta=getProcessMeta(eq);
     const row=document.createElement('div');
     row.className=`share-process-row ${meta.cls}`;
-    row.innerHTML=`<div class="share-process-label"><div class="icon">${meta.icon}</div><div class="name">${meta.name}</div></div><div class="share-team-grid"></div>`;
+    row.innerHTML=processLabelHtml_(eq,meta);
     const grid=row.querySelector('.share-team-grid');
 
     stds.forEach(s=>{
@@ -1211,18 +1205,15 @@ function getProcessMeta(eq){
   if(eq==='지대 보터머') return {cls:'bottomer', icon:'■', name:'보터머'};
   return {cls:'pinch', icon:'🔗', name:'핀치'};
 }
-async function downloadShareJPG(){
+async function createShareJPG_(){
   const target=document.querySelector('.share-phone');
-  if(!target){
-    alert('공유용 화면을 찾지 못했습니다.');
-    return;
-  }
+  if(!target) throw new Error('공유용 화면을 찾지 못했습니다.');
+
+  const buttons=target.querySelector('.share-hero-buttons');
+  const prevVisibility=buttons ? buttons.style.visibility : '';
+  if(buttons) buttons.style.visibility='hidden';
 
   try{
-    const buttons=target.querySelector('.share-hero-buttons');
-    const prevVisibility=buttons ? buttons.style.visibility : '';
-    if(buttons) buttons.style.visibility='hidden';
-
     const canvas=await html2canvas(target,{
       backgroundColor:'#f7f9fc',
       scale:2,
@@ -1232,17 +1223,28 @@ async function downloadShareJPG(){
       windowHeight:target.scrollHeight
     });
 
-    if(buttons) buttons.style.visibility=prevVisibility;
-
     const selectedDate=$('date').value || new Date().toISOString().slice(0,10);
     const filename=`생산실적요약_${selectedDate}.jpg`;
+    const blob=await new Promise((resolve,reject)=>{
+      canvas.toBlob(value=>value ? resolve(value) : reject(new Error('JPG 파일 생성에 실패했습니다.')),'image/jpeg',0.95);
+    });
+    return {blob,filename};
+  }finally{
+    if(buttons) buttons.style.visibility=prevVisibility;
+  }
+}
+
+async function downloadShareJPG(){
+  try{
+    const {blob,filename}=await createShareJPG_();
 
     const link=document.createElement('a');
     link.download=filename;
-    link.href=canvas.toDataURL('image/jpeg',0.95);
+    link.href=URL.createObjectURL(blob);
     document.body.appendChild(link);
     link.click();
     link.remove();
+    setTimeout(()=>URL.revokeObjectURL(link.href),1000);
   }catch(e){
     console.error(e);
     alert('JPG 저장 중 오류가 발생했습니다: '+(e.message||e));
@@ -1252,15 +1254,28 @@ async function downloadShareJPG(){
 async function shareSummary(){
   const title='생산 실적 요약';
   const text=`${$('shareHeroDate').textContent}\n09월 누적 생산수량 ${$('shareProductionTotal').textContent}\n09월 누적 출고수량 ${$('shareShipmentTotal').textContent}`;
-  if(navigator.share){
-    try{ await navigator.share({title,text}); }catch(e){}
-  }else{
-    try{
-      await navigator.clipboard.writeText(text);
-      alert('요약 문구를 복사했습니다.');
-    }catch(e){
-      alert(text);
+  try{
+    const {blob,filename}=await createShareJPG_();
+    const file=new File([blob],filename,{type:'image/jpeg'});
+    const shareData={title,text,files:[file]};
+
+    if(navigator.share && (!navigator.canShare || navigator.canShare({files:[file]}))){
+      await navigator.share(shareData);
+      return;
     }
+
+    const link=document.createElement('a');
+    link.download=filename;
+    link.href=URL.createObjectURL(blob);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(()=>URL.revokeObjectURL(link.href),1000);
+    alert('이 기기에서는 JPG 직접 공유를 지원하지 않아 파일로 저장했습니다.');
+  }catch(e){
+    if(e && e.name==='AbortError') return;
+    console.error(e);
+    alert('JPG 공유 중 오류가 발생했습니다: '+(e.message||e));
   }
 }
 
