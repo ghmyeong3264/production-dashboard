@@ -43,6 +43,7 @@
 body.share-mode{background:#eef2f7}
 body.share-mode .wrap{display:none!important}
 body.share-mode .share-view{display:block}
+body.capture-mode .share-hero-buttons{display:none!important}
 
 .share-phone{
   width:min(calc(100vw - 24px),1280px);
@@ -2016,6 +2017,9 @@ const SHARE_QUERY = new URLSearchParams(window.location.search);
 const CUMULATIVE_MODE = SHARE_QUERY.get('mode') === 'cumulative';
 let AUTO_SHARE_FROM_URL = SHARE_QUERY.get('share') === '1';
 const AUTO_SHARE_DATE = SHARE_QUERY.get('date') || '';
+const CAPTURE_MODE = SHARE_QUERY.get('capture') === '1';
+
+if(CAPTURE_MODE) document.body.classList.add('capture-mode');
 
 function applyShareQuery_(){
   if(AUTO_SHARE_DATE && /^\d{4}-\d{2}-\d{2}$/.test(AUTO_SHARE_DATE)){
