@@ -922,8 +922,39 @@ function closeShareView(){
   window.scrollTo(0,0);
 }
 
+// Apps Script가 Supabase 비밀키를 보관하고 공유 화면에는 읽기 결과만 반환한다.
+const PUBLIC_SHARE_ENDPOINT='https://script.google.com/macros/s/AKfycbwFi_gF7SFqePBbRxwGqeIahweJyUXR0xNuxbVGLW9keNtRXMkIwNjXeBTsfSxf1dGh/exec';
+
+function fetchPublicShareData_(selectedDate){
+  return new Promise((resolve,reject)=>{
+    const callback='shareDataCallback'+Date.now()+Math.floor(Math.random()*10000);
+    const script=document.createElement('script');
+    const cleanup=()=>{
+      delete window[callback];
+      script.remove();
+    };
+    window[callback]=(payload)=>{ cleanup(); resolve(payload); };
+    script.onerror=()=>{ cleanup(); reject(new Error('공유 데이터 조회 실패')); };
+    script.src=`${PUBLIC_SHARE_ENDPOINT}?action=share-data&date=${encodeURIComponent(selectedDate)}&callback=${callback}`;
+    document.head.appendChild(script);
+  });
+}
+
 async function fetchCumulativeSnapshots_(selectedDate){
   if(!sb){
+    try{
+      const shared=await fetchPublicShareData_(selectedDate);
+      if(shared?.ok){
+        standards=(shared.standards||[]).map(item=>{
+          if(item.equipment==='지대 보터머'&&item.team==='A조') return {...item,worker_name:'홍정용'};
+          if(item.equipment==='지대 튜버'&&item.team==='A조') return {...item,worker_name:'김재열'};
+          return item;
+        });
+        return {current:shared.current||[],error:null};
+      }
+    }catch(error){
+      console.error('공유 데이터 조회 오류',error);
+    }
     // 메신저 미리보기처럼 설정값이 없는 외부 브라우저에서는 경고창을 띄우지 않는다.
     const ok=await ensure({silent:true});
     if(!ok) return {current:[],error:'Supabase 미연결'};
@@ -1073,9 +1104,10 @@ async function renderCumulativeShare_(selectedDate){
       const hRate=Number(s.hourly_cost_rate||0);
       const dRate=Number(s.defect_cost_rate||0);
 
-      const saving =
+      const calculatedSaving =
         (a.hourly-savingHBase)*(a.loadMinutes/60)*hRate +
         ((savingDBase-a.defect)/100)*(a.good+a.bad)*dRate;
+      const saving=Number.isFinite(Number(r.shared_saving)) ? Number(r.shared_saving) : calculatedSaving;
 
       const hPct=hBase ? ((a.hourly-hBase)/hBase*100) : 0;
       const defectPct=dBase ? ((a.defect-dBase)/dBase*100) : 0;
