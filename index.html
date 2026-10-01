@@ -701,13 +701,13 @@ body.capture-mode .share-hero-buttons{display:none!important}
 
     <div class="share-total-card">
       <div class="share-total-left">
-        <div class="share-total-label">09월 누적 생산수량</div>
+        <div id="shareProductionLabel" class="share-total-label">09월 누적 생산수량</div>
         <div class="share-total-sub">9월 1일 ~ 현재 입력 기준</div>
         <div id="shareProductionTotal" class="share-total-value">2,233,090</div>
       </div>
       <div class="share-total-divider"></div>
       <div class="share-total-right">
-        <div class="share-total-label">09월 누적 출고수량</div>
+        <div id="shareShipmentLabel" class="share-total-label">09월 누적 출고수량</div>
         <div class="share-total-sub">9월 1일 ~ 현재 입력 기준</div>
         <div id="shareShipmentTotal" class="share-total-value">2,659,294</div>
       </div>
@@ -1015,8 +1015,13 @@ function processLabelHtml_(equipment,meta){
 }
 
 function renderSeptemberTotals_(){
-  if($('shareProductionTotal')) $('shareProductionTotal').textContent=fmt(SEPTEMBER_TOTAL_PRODUCTION);
-  if($('shareShipmentTotal')) $('shareShipmentTotal').textContent=fmt(SEPTEMBER_TOTAL_SHIPMENT);
+  const production=readShareTotal_('production_total',SEPTEMBER_TOTAL_PRODUCTION);
+  const shipment=readShareTotal_('shipment_total',SEPTEMBER_TOTAL_SHIPMENT);
+  const month=shareMonth_();
+  if($('shareProductionTotal')) $('shareProductionTotal').textContent=fmt(production);
+  if($('shareShipmentTotal')) $('shareShipmentTotal').textContent=fmt(shipment);
+  if($('shareProductionLabel')) $('shareProductionLabel').textContent=month+'월 누적 생산수량';
+  if($('shareShipmentLabel')) $('shareShipmentLabel').textContent=month+'월 누적 출고수량';
 }
 
 function calcCumulativeSaving_(rows){
@@ -2056,6 +2061,18 @@ const CUMULATIVE_MODE = SHARE_QUERY.get('mode') === 'cumulative';
 let AUTO_SHARE_FROM_URL = SHARE_QUERY.get('share') === '1';
 const AUTO_SHARE_DATE = SHARE_QUERY.get('date') || '';
 const CAPTURE_MODE = SHARE_QUERY.get('capture') === '1';
+
+function readShareTotal_(name,fallback){
+  const raw=String(SHARE_QUERY.get(name)||'').replace(/,/g,'').trim();
+  if(!/^\d+$/.test(raw)) return fallback;
+  const value=Number(raw);
+  return Number.isSafeInteger(value) ? value : fallback;
+}
+
+function shareMonth_(){
+  const match=AUTO_SHARE_DATE.match(/^\d{4}-(\d{2})-\d{2}$/);
+  return match ? String(Number(match[1])) : '09';
+}
 
 if(CAPTURE_MODE) document.body.classList.add('capture-mode');
 
