@@ -4,6 +4,10 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1.0" />
 <title>공정부문 원가절감 / 생산성 대시보드</title>
+<meta property="og:type" content="website" />
+<meta property="og:title" content="지대파트 생산 실적 요약" />
+<meta property="og:description" content="신일피엔에스(주) 생산기술2팀 · 공유용 생산 실적 요약" />
+<meta name="twitter:card" content="summary" />
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
@@ -920,7 +924,8 @@ function closeShareView(){
 
 async function fetchCumulativeSnapshots_(selectedDate){
   if(!sb){
-    const ok=await ensure();
+    // 메신저 미리보기처럼 설정값이 없는 외부 브라우저에서는 경고창을 띄우지 않는다.
+    const ok=await ensure({silent:true});
     if(!ok) return {current:[],error:'Supabase 미연결'};
   }
 
@@ -1675,7 +1680,8 @@ function normalizeSupabaseUrl(raw){
   // Data API 주소(/rest/v1 등)를 붙여 넣어도 프로젝트 기본 URL만 사용
   return u.origin;
 }
-async function connect(){
+async function connect(options={}){
+  const silent=options.silent===true;
   try{
     const url=normalizeSupabaseUrl($('sbUrl').value);
     const key=$('sbKey').value.trim();
@@ -1696,10 +1702,10 @@ async function connect(){
     console.error(e);
     sb=null;
     setStatus(false);
-    alert('연결 실패: '+(e.message||e));
+    if(!silent) alert('연결 실패: '+(e.message||e));
   }
 }
-async function ensure(){if(sb)return true;await connect();return !!sb}
+async function ensure(options={}){if(sb)return true;await connect(options);return !!sb}
 async function fetchAllDaily_(){
   const rows=[];
   const pageSize=1000;
