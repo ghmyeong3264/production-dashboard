@@ -48,6 +48,23 @@ body.share-mode{background:#eef2f7}
 body.share-mode .wrap{display:none!important}
 body.share-mode .share-view{display:block}
 body.capture-mode .share-hero-buttons{display:none!important}
+body.capture-mode .share-calendar-modal{display:none!important}
+
+.share-calendar-modal{position:fixed;inset:0;z-index:120;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(10,33,75,.48)}
+.share-calendar-modal[hidden]{display:none}
+.share-calendar-panel{width:min(420px,100%);padding:18px;border-radius:20px;background:#fff;box-shadow:0 20px 54px rgba(4,24,59,.28)}
+.share-calendar-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px}
+.share-calendar-title{flex:1;text-align:center;font-weight:900;font-size:20px;color:#062d67}
+.share-calendar-nav,.share-calendar-close{border:0;border-radius:10px;font-weight:800;cursor:pointer}
+.share-calendar-nav{width:36px;height:36px;background:#edf4ff;color:#075ecb;font-size:25px;line-height:1}
+.share-calendar-close{padding:9px 11px;background:#f0f3f8;color:#42546f;font-size:13px}
+.share-calendar-week,.share-calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.share-calendar-week{margin-bottom:5px;color:#667790;font-size:12px;font-weight:800;text-align:center}
+.share-calendar-week span:first-child{color:#e03023}.share-calendar-week span:last-child{color:#1368c8}
+.share-calendar-day{aspect-ratio:1;border:0;border-radius:10px;background:#f5f8fc;color:#18365e;font-size:14px;font-weight:800;cursor:pointer}
+.share-calendar-day:hover{background:#dcecff}.share-calendar-day.is-selected{background:#0b6bd8;color:#fff;box-shadow:0 4px 10px rgba(11,107,216,.3)}
+.share-calendar-day.is-sunday{color:#df332a}.share-calendar-day.is-saturday{color:#1765be}.share-calendar-day.is-selected{color:#fff}
+.share-calendar-blank{aspect-ratio:1}.share-calendar-note{margin:15px 2px 0;color:#667790;font-size:12px;line-height:1.5}
 
 .share-phone{
   width:min(calc(100vw - 24px),1280px);
@@ -689,6 +706,9 @@ body.capture-mode .share-hero-buttons{display:none!important}
           <button class="share-btn" onclick="downloadShareJPG()">
             <span>JPG 저장</span>
           </button>
+          <button class="share-btn" onclick="openShareCalendar()">
+            <span>날짜 조회</span>
+          </button>
           <button id="shareButton" class="share-btn" onclick="shareSummary()">
             <span id="shareButtonLabel">공유하기</span>
           </button>
@@ -724,6 +744,21 @@ body.capture-mode .share-hero-buttons{display:none!important}
       <div class="share-footer-left">안전과 품질을 최우선으로,<br>내일도 좋은 하루 되세요.</div>
       <div class="share-footer-right">신일피엔에스(주)<br><small>생산기술2팀</small></div>
     </div>
+  </div>
+</div>
+<div id="shareCalendarModal" class="share-calendar-modal" hidden>
+  <div class="share-calendar-panel" role="dialog" aria-modal="true" aria-label="생산 실적 날짜 조회">
+    <div class="share-calendar-head">
+      <button class="share-calendar-nav" type="button" onclick="moveShareCalendarMonth(-1)" aria-label="이전 달">‹</button>
+      <div id="shareCalendarTitle" class="share-calendar-title">-</div>
+      <div style="display:flex;gap:6px">
+        <button class="share-calendar-nav" type="button" onclick="moveShareCalendarMonth(1)" aria-label="다음 달">›</button>
+        <button class="share-calendar-close" type="button" onclick="closeShareCalendar()">닫기</button>
+      </div>
+    </div>
+    <div class="share-calendar-week"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
+    <div id="shareCalendarGrid" class="share-calendar-grid"></div>
+    <p class="share-calendar-note">날짜를 누르면 해당 일자의 조별 생산 실적을 조회합니다. 저장된 실적이 없는 날짜는 안내 문구가 표시됩니다.</p>
   </div>
 </div>
 <div class="wrap">
@@ -1073,6 +1108,7 @@ async function renderCumulativeShare_(selectedDate){
   const data=await fetchCumulativeSnapshots_(selectedDate);
   if(data.error) console.error('누적모드 조회 실패:',data.error);
   if(!data.current.length) return false;
+  SHARE_CALENDAR_SELECTED_DATE=selectedDate;
 
   const d=new Date(selectedDate+'T00:00:00');
   const ko=['일','월','화','수','목','금','토'][d.getDay()];
@@ -1154,6 +1190,61 @@ async function renderCumulativeShare_(selectedDate){
     host.appendChild(row);
   });
   return true;
+}
+
+function openShareCalendar(){
+  const fallback=new Date().toISOString().slice(0,10);
+  const selected=SHARE_CALENDAR_SELECTED_DATE||AUTO_SHARE_DATE||fallback;
+  SHARE_CALENDAR_MONTH=selected.slice(0,7);
+  renderShareCalendar_();
+  $('shareCalendarModal').hidden=false;
+}
+
+function closeShareCalendar(){
+  $('shareCalendarModal').hidden=true;
+}
+
+function moveShareCalendarMonth(delta){
+  const [year,month]=SHARE_CALENDAR_MONTH.split('-').map(Number);
+  const moved=new Date(year,month-1+delta,1);
+  SHARE_CALENDAR_MONTH=`${moved.getFullYear()}-${String(moved.getMonth()+1).padStart(2,'0')}`;
+  renderShareCalendar_();
+}
+
+function renderShareCalendar_(){
+  const grid=$('shareCalendarGrid');
+  if(!grid) return;
+  const [year,month]=SHARE_CALENDAR_MONTH.split('-').map(Number);
+  const firstWeekday=new Date(year,month-1,1).getDay();
+  const lastDay=new Date(year,month,0).getDate();
+  $('shareCalendarTitle').textContent=`${year}년 ${month}월`;
+  grid.innerHTML='';
+  for(let i=0;i<firstWeekday;i++) grid.insertAdjacentHTML('beforeend','<span class="share-calendar-blank"></span>');
+  for(let day=1;day<=lastDay;day++){
+    const date=`${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const weekday=(firstWeekday+day-1)%7;
+    const classes=['share-calendar-day'];
+    if(date===SHARE_CALENDAR_SELECTED_DATE) classes.push('is-selected');
+    if(weekday===0) classes.push('is-sunday');
+    if(weekday===6) classes.push('is-saturday');
+    const button=document.createElement('button');
+    button.type='button';
+    button.className=classes.join(' ');
+    button.textContent=day;
+    button.setAttribute('aria-label',`${year}년 ${month}월 ${day}일 조회`);
+    button.onclick=()=>selectShareCalendarDate_(date);
+    grid.appendChild(button);
+  }
+}
+
+async function selectShareCalendarDate_(selectedDate){
+  const ok=await renderCumulativeShare_(selectedDate);
+  if(!ok){
+    const d=new Date(selectedDate+'T00:00:00');
+    alert(`${d.getMonth()+1}월 ${d.getDate()}일에는 저장된 실적이 없습니다.`);
+    return;
+  }
+  closeShareCalendar();
 }
 
 function renderShareView(monthRows, dayRows, prevRows, selectedDate){
@@ -2061,6 +2152,8 @@ const CUMULATIVE_MODE = SHARE_QUERY.get('mode') === 'cumulative';
 let AUTO_SHARE_FROM_URL = SHARE_QUERY.get('share') === '1';
 const AUTO_SHARE_DATE = SHARE_QUERY.get('date') || '';
 const CAPTURE_MODE = SHARE_QUERY.get('capture') === '1';
+let SHARE_CALENDAR_SELECTED_DATE = '';
+let SHARE_CALENDAR_MONTH = '';
 
 function readShareTotal_(name,fallback){
   const raw=String(SHARE_QUERY.get(name)||'').replace(/,/g,'').trim();
