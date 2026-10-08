@@ -675,6 +675,33 @@ body.capture-mode .share-calendar-modal{display:none!important}
   .share-change{font-size:11px !important}
   .share-save-value{font-size:17px !important}
 }
+
+/* 휴대폰: PC용 최소 카드 폭을 해제하고 한 공정씩 세로로 표시 */
+@media (max-width:600px){
+  .share-phone{width:calc(100vw - 6px) !important}
+  .share-process-rows{
+    grid-template-columns:1fr !important;
+    gap:9px !important;
+    padding:0 7px 9px !important;
+  }
+  .share-process-row{
+    grid-template-columns:68px minmax(0,1fr) !important;
+    gap:7px !important;
+    padding:8px !important;
+  }
+  .share-team-grid,
+  .share-process-row.pinch .share-team-grid{
+    grid-template-columns:minmax(0,1fr) !important;
+    gap:7px !important;
+  }
+  .share-process-row.pinch .share-mini-card:first-child{grid-column:auto !important}
+  .share-process-label{min-height:132px !important}
+  .share-mini-card{min-width:0 !important;padding:10px 9px !important}
+  .share-mini-worker{font-size:15px !important}
+  .share-current-value{font-size:28px !important}
+  .share-change{font-size:17px !important}
+  .share-save-value{font-size:25px !important}
+}
 @media print{
   @page{size:A4 landscape;margin:8mm}
   body{background:#fff}
