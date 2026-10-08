@@ -2190,7 +2190,9 @@ function parseMonthlyShareTotals_(){
 }
 
 function validMonthlyTotal_(value){
-  const numeric=Number(String(value??'').replace(/,/g,''));
+  const text=String(value??'').replace(/,/g,'').trim();
+  if(!text) return null;
+  const numeric=Number(text);
   return Number.isSafeInteger(numeric)&&numeric>=0 ? numeric : null;
 }
 
