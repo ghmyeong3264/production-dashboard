@@ -630,16 +630,20 @@ body.capture-mode .share-calendar-modal{display:none!important}
   }
 }
 
-/* V4.22 9월 누적 수량 및 공정별 25년 실적 기준 */
+/* 공유 화면의 월별 누적 수량 및 공정별 25년 실적 기준 */
 .share-total-card{
   background:#fff !important;
   border-color:#d8e4f4 !important;
-  grid-template-columns:minmax(0,1fr) 1px minmax(0,1fr) !important;
+  grid-template-columns:minmax(0,1fr) 1px minmax(0,1fr) 1px minmax(0,1fr) !important;
 }
-.share-total-left,.share-total-right{min-width:0}
+.share-total-left,.share-total-middle,.share-total-right{min-width:0}
 .share-total-divider{background:#d8e4f4 !important}
 #shareProductionTotal{color:#1769e0}
 #shareShipmentTotal{color:#079455}
+#shareSavingTotal{color:#d92d20;font-size:34px}
+@media (max-width:520px){
+  #shareSavingTotal{font-size:18px}
+}
 .share-process-baseline{
   grid-column:1 / -1;
   display:flex;
@@ -722,14 +726,20 @@ body.capture-mode .share-calendar-modal{display:none!important}
     <div class="share-total-card">
       <div class="share-total-left">
         <div id="shareProductionLabel" class="share-total-label">09월 누적 생산수량</div>
-        <div class="share-total-sub">9월 1일 ~ 현재 입력 기준</div>
+        <div id="shareProductionSub" class="share-total-sub">9월 1일 ~ 현재 입력 기준</div>
         <div id="shareProductionTotal" class="share-total-value">2,233,090</div>
       </div>
       <div class="share-total-divider"></div>
-      <div class="share-total-right">
+      <div class="share-total-middle">
         <div id="shareShipmentLabel" class="share-total-label">09월 누적 출고수량</div>
-        <div class="share-total-sub">9월 1일 ~ 현재 입력 기준</div>
+        <div id="shareShipmentSub" class="share-total-sub">9월 1일 ~ 현재 입력 기준</div>
         <div id="shareShipmentTotal" class="share-total-value">2,659,294</div>
+      </div>
+      <div class="share-total-divider"></div>
+      <div class="share-total-right">
+        <div id="shareSavingLabel" class="share-total-label">09월 산정금액 합계</div>
+        <div id="shareSavingSub" class="share-total-sub">9월 1일 ~ 현재 입력 기준</div>
+        <div id="shareSavingTotal" class="share-total-value">-</div>
       </div>
     </div>
 
@@ -873,6 +883,9 @@ const PREVIOUS_YEAR_MONTHLY_SAVINGS=[-10332744,-7000995,-21012886,-7695018,63256
 const PREVIOUS_YEAR_MONTHLY_AVERAGE=PREVIOUS_YEAR_MONTHLY_SAVINGS.reduce((sum,value)=>sum+value,0)/PREVIOUS_YEAR_MONTHLY_SAVINGS.length;
 const SEPTEMBER_TOTAL_PRODUCTION=2233090;
 const SEPTEMBER_TOTAL_SHIPMENT=2659294;
+const MONTHLY_SHARE_TOTALS={
+  '2026-09':{production:SEPTEMBER_TOTAL_PRODUCTION,shipment:SEPTEMBER_TOTAL_SHIPMENT}
+};
 const ENTRY_SLOTS=[
   {label:'인쇄 주간',equipment:'지대 인쇄1호기',teams:['A조','B조','C조']},
   {label:'인쇄 야간',equipment:'지대 인쇄1호기',teams:['A조','B조','C조']},
@@ -1049,14 +1062,24 @@ function processLabelHtml_(equipment,meta){
   </div><div class="share-team-grid"></div>`;
 }
 
-function renderSeptemberTotals_(){
-  const production=readShareTotal_('production_total',SEPTEMBER_TOTAL_PRODUCTION);
-  const shipment=readShareTotal_('shipment_total',SEPTEMBER_TOTAL_SHIPMENT);
-  const month=shareMonth_();
-  if($('shareProductionTotal')) $('shareProductionTotal').textContent=fmt(production);
-  if($('shareShipmentTotal')) $('shareShipmentTotal').textContent=fmt(shipment);
+function renderMonthlyShareTotals_(selectedDate,currentRows=[]){
+  const monthKey=selectedDate.slice(0,7);
+  const month=String(Number(selectedDate.slice(5,7)));
+  const day=String(Number(selectedDate.slice(8,10)));
+  const totals=getMonthlyShareTotals_(monthKey);
+  const sub=`${month}월 1일 ~ ${day}일 기준`;
+  const saving=currentRows.reduce((sum,row)=>{
+    const shared=Number(row.shared_saving);
+    return sum+(Number.isFinite(shared)?shared:0);
+  },0);
+
+  if($('shareProductionTotal')) $('shareProductionTotal').textContent=totals.production===null?'입력 필요':fmt(totals.production);
+  if($('shareShipmentTotal')) $('shareShipmentTotal').textContent=totals.shipment===null?'입력 필요':fmt(totals.shipment);
+  if($('shareSavingTotal')) $('shareSavingTotal').textContent=currentRows.length?`${saving<0?'-':''}${fmt(Math.abs(Math.round(saving)))}원`:'-';
   if($('shareProductionLabel')) $('shareProductionLabel').textContent=month+'월 누적 생산수량';
   if($('shareShipmentLabel')) $('shareShipmentLabel').textContent=month+'월 누적 출고수량';
+  if($('shareSavingLabel')) $('shareSavingLabel').textContent=month+'월 산정금액 합계';
+  ['shareProductionSub','shareShipmentSub','shareSavingSub'].forEach(id=>{ if($(id)) $(id).textContent=sub; });
 }
 
 function calcCumulativeSaving_(rows){
@@ -1119,7 +1142,7 @@ async function renderCumulativeShare_(selectedDate){
   if($('shareSectionDate')) $('shareSectionDate').textContent=dateText+' 기준';
   if($('shareHeroTime')) $('shareHeroTime').textContent='업데이트 '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false});
 
-  renderSeptemberTotals_();
+  renderMonthlyShareTotals_(selectedDate,data.current);
 
   const host=$('shareProcessRows');
   if(!host) return true;
@@ -1255,7 +1278,7 @@ function renderShareView(monthRows, dayRows, prevRows, selectedDate){
   $('shareHeroTime').textContent='업데이트 '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false});
   $('shareSectionDate').textContent=`${formatKoreanDate(selectedDate)} 기준`;
 
-  renderSeptemberTotals_();
+  renderMonthlyShareTotals_(selectedDate,currentMonthRows);
 
   const container=$('shareProcessRows');
   container.innerHTML='';
@@ -2155,16 +2178,32 @@ const CAPTURE_MODE = SHARE_QUERY.get('capture') === '1';
 let SHARE_CALENDAR_SELECTED_DATE = '';
 let SHARE_CALENDAR_MONTH = '';
 
-function readShareTotal_(name,fallback){
-  const raw=String(SHARE_QUERY.get(name)||'').replace(/,/g,'').trim();
-  if(!/^\d+$/.test(raw)) return fallback;
-  const value=Number(raw);
-  return Number.isSafeInteger(value) ? value : fallback;
+function parseMonthlyShareTotals_(){
+  const raw=SHARE_QUERY.get('monthly_totals');
+  if(!raw) return {};
+  try{
+    const parsed=JSON.parse(raw);
+    return parsed&&typeof parsed==='object'?parsed:{};
+  }catch(_){
+    return {};
+  }
 }
 
-function shareMonth_(){
-  const match=AUTO_SHARE_DATE.match(/^\d{4}-(\d{2})-\d{2}$/);
-  return match ? String(Number(match[1])) : '09';
+function validMonthlyTotal_(value){
+  const numeric=Number(String(value??'').replace(/,/g,''));
+  return Number.isSafeInteger(numeric)&&numeric>=0 ? numeric : null;
+}
+
+function getMonthlyShareTotals_(monthKey){
+  const merged={...MONTHLY_SHARE_TOTALS,...parseMonthlyShareTotals_()};
+  const saved=merged[monthKey]||{};
+  const isLinkedCurrentMonth=AUTO_SHARE_DATE.slice(0,7)===monthKey;
+  const linkedProduction=isLinkedCurrentMonth?validMonthlyTotal_(SHARE_QUERY.get('production_total')):null;
+  const linkedShipment=isLinkedCurrentMonth?validMonthlyTotal_(SHARE_QUERY.get('shipment_total')):null;
+  return {
+    production:linkedProduction??validMonthlyTotal_(saved.production),
+    shipment:linkedShipment??validMonthlyTotal_(saved.shipment)
+  };
 }
 
 if(CAPTURE_MODE) document.body.classList.add('capture-mode');
