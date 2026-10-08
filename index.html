@@ -1062,24 +1062,45 @@ function processLabelHtml_(equipment,meta){
   </div><div class="share-team-grid"></div>`;
 }
 
-function renderMonthlyShareTotals_(selectedDate,currentRows=[]){
+function renderMonthlyShareTotals_(selectedDate,currentRows=[],savingRows=currentRows,savingDate=selectedDate){
   const monthKey=selectedDate.slice(0,7);
   const month=String(Number(selectedDate.slice(5,7)));
   const day=String(Number(selectedDate.slice(8,10)));
+  const savingDay=String(Number(savingDate.slice(8,10)));
   const totals=getMonthlyShareTotals_(monthKey);
   const sub=`${month}월 1일 ~ ${day}일 기준`;
-  const saving=currentRows.reduce((sum,row)=>{
+  const savingSub=`${month}월 1일 ~ ${savingDay}일 기준`;
+  const saving=savingRows.reduce((sum,row)=>{
     const shared=Number(row.shared_saving);
     return sum+(Number.isFinite(shared)?shared:0);
   },0);
 
   if($('shareProductionTotal')) $('shareProductionTotal').textContent=totals.production===null?'입력 필요':fmt(totals.production);
   if($('shareShipmentTotal')) $('shareShipmentTotal').textContent=totals.shipment===null?'입력 필요':fmt(totals.shipment);
-  if($('shareSavingTotal')) $('shareSavingTotal').textContent=currentRows.length?`${saving<0?'-':''}${fmt(Math.abs(Math.round(saving)))}원`:'-';
+  if($('shareSavingTotal')) $('shareSavingTotal').textContent=savingRows.length?`${saving<0?'-':''}${fmt(Math.abs(Math.round(saving)))}원`:'-';
   if($('shareProductionLabel')) $('shareProductionLabel').textContent=month+'월 누적 생산수량';
   if($('shareShipmentLabel')) $('shareShipmentLabel').textContent=month+'월 누적 출고수량';
   if($('shareSavingLabel')) $('shareSavingLabel').textContent=month+'월 산정금액 합계';
-  ['shareProductionSub','shareShipmentSub','shareSavingSub'].forEach(id=>{ if($(id)) $(id).textContent=sub; });
+  ['shareProductionSub','shareShipmentSub'].forEach(id=>{ if($(id)) $(id).textContent=sub; });
+  if($('shareSavingSub')) $('shareSavingSub').textContent=savingSub;
+}
+
+function koreaToday_(){
+  const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+  const value=type=>parts.find(part=>part.type===type)?.value||'';
+  return `${value('year')}-${value('month')}-${value('day')}`;
+}
+
+function previousDate_(date){
+  const value=new Date(date+'T00:00:00');
+  value.setDate(value.getDate()-1);
+  return `${value.getFullYear()}-${String(value.getMonth()+1).padStart(2,'0')}-${String(value.getDate()).padStart(2,'0')}`;
+}
+
+function savingSnapshotDate_(selectedDate){
+  return CUMULATIVE_MODE && selectedDate===AUTO_SHARE_DATE && selectedDate===koreaToday_()
+    ? previousDate_(selectedDate)
+    : selectedDate;
 }
 
 function calcCumulativeSaving_(rows){
@@ -1142,7 +1163,13 @@ async function renderCumulativeShare_(selectedDate){
   if($('shareSectionDate')) $('shareSectionDate').textContent=dateText+' 기준';
   if($('shareHeroTime')) $('shareHeroTime').textContent='업데이트 '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false});
 
-  renderMonthlyShareTotals_(selectedDate,data.current);
+  const savingDate=savingSnapshotDate_(selectedDate);
+  let savingRows=data.current;
+  if(savingDate!==selectedDate){
+    const savingData=await fetchCumulativeSnapshots_(savingDate);
+    if(!savingData.error&&savingData.current.length) savingRows=savingData.current;
+  }
+  renderMonthlyShareTotals_(selectedDate,data.current,savingRows,savingDate);
 
   const host=$('shareProcessRows');
   if(!host) return true;
