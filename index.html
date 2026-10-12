@@ -1097,9 +1097,22 @@ function renderMonthlyShareTotals_(selectedDate,currentRows=[],savingRows=curren
   const totals=getMonthlyShareTotals_(monthKey);
   const sub=`${month}월 1일 ~ ${day}일 기준`;
   const savingSub=`${month}월 1일 ~ ${savingDay}일 기준`;
+  // 누적 스냅샷에는 shared_saving 값이 없는 경우가 있다.
+  // 조별 카드와 같은 계산식을 적용해 상단 합계도 실제 산정금액을 표시한다.
   const saving=savingRows.reduce((sum,row)=>{
     const shared=Number(row.shared_saving);
-    return sum+(Number.isFinite(shared)?shared:0);
+    if(Number.isFinite(shared)) return sum+shared;
+
+    const standard=findStandard_(row.equipment,row.team);
+    if(!standard) return sum;
+    const a=cumulativeAgg_(row);
+    const hourlyBase=Number(standard.baseline_hourly_output||0);
+    const defectBase=Number(standard.baseline_defect_rate||0);
+    const hourlyRate=Number(standard.hourly_cost_rate||0);
+    const defectRate=Number(standard.defect_cost_rate||0);
+    const calculated=(a.hourly-hourlyBase)*(a.loadMinutes/60)*hourlyRate+
+      ((defectBase-a.defect)/100)*(a.good+a.bad)*defectRate;
+    return sum+(Number.isFinite(calculated)?calculated:0);
   },0);
 
   if($('shareProductionTotal')) $('shareProductionTotal').textContent=totals.production===null?'입력 필요':fmt(totals.production);
