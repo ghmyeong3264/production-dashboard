@@ -1023,6 +1023,7 @@ async function fetchCumulativeSnapshots_(selectedDate){
         standards=(shared.standards||[]).map(item=>{
           if(item.equipment==='지대 보터머'&&item.team==='A조') return {...item,worker_name:'홍정용'};
           if(item.equipment==='지대 튜버'&&item.team==='A조') return {...item,worker_name:'김재열'};
+          if(item.equipment==='지대 튜버'&&item.team==='C조') return {...item,worker_name:'김흥대'};
           return item;
         });
         return {current:shared.current||[],error:null};
@@ -1940,6 +1941,7 @@ async function loadAll(){if(!await ensure())return;let s,d;try{[s,d]=await Promi
     standards=standards.map(x=>{
       if(x.equipment==='지대 보터머'&&x.team==='A조') return {...x,worker_name:'홍정용'};
       if(x.equipment==='지대 튜버'&&x.team==='A조') return {...x,worker_name:'김재열'};
+      if(x.equipment==='지대 튜버'&&x.team==='C조') return {...x,worker_name:'김흥대'};
       return x;
     });
     daily=d;render();loadEntryDate();
