@@ -1189,6 +1189,11 @@ function renderSavingComparison_(monthlySaving){
   $('shareSavingRate').className='share-rate-value '+shareRateClasses(rate);
 }
 
+function displayWorkerName_(equipment,team,name=''){
+  if(equipment==='지대 튜버'&&team==='C조') return '김흥대';
+  return name;
+}
+
 async function renderCumulativeShare_(selectedDate){
   const data=await fetchCumulativeSnapshots_(selectedDate);
   if(data.error) console.error('누적모드 조회 실패:',data.error);
@@ -1253,7 +1258,7 @@ async function renderCumulativeShare_(selectedDate){
       card.className='share-mini-card';
       card.innerHTML=`<div class="share-mini-top">
         <div class="share-mini-team">${r.team}</div>
-        <div class="share-mini-worker">${r.worker_name || s.worker_name || ''}</div>
+        <div class="share-mini-worker">${displayWorkerName_(eq,r.team,r.worker_name || s.worker_name || '')}</div>
       </div>
       <div class="share-metric-pair">
         <div class="share-metric-block">
